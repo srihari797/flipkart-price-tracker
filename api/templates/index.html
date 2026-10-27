@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flipkart Price Tracker & Intelligence Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        flipkart: {
+                            blue: '#2874f0',
+                            yellow: '#ff9f00',
+                            dark: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="h-full font-sans bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col min-h-screen">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 glass-card border-b border-slate-800 px-4 lg:px-8 py-3.5 flex flex-wrap gap-4 items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-bold text-xl">
+                <i class="fa-solid me-0.5">🛒</i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-xl font-bold tracking-tight text-white">Flipkart Tracker</h1>
+                    <span class="px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live Price Engine Active
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400">Search products, track prices & receive instant price drop email alerts</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+            <button id="tab-search-btn" onclick="switchTab('search')" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-md flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass text-xs"></i> Search Flipkart
+            </button>
+            <button id="tab-tracked-btn" onclick="switchTab('tracked')" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-xs"></i> Tracked Products 
+                <span id="tracked-badge" class="ml-1 px-2 py-0.5 text-xs bg-blue-500/20 text-blue-300 rounded-full font-bold">0</span>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6">
+
+        <!-- STATS OVERVIEW CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xl">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Tracked</p>
+                    <h3 id="stat-total-tracked" class="text-2xl font-bold text-white">0</h3>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Price Drops Detected</p>
+                    <h3 id="stat-drops-count" class="text-2xl font-bold text-emerald-400">0 Products</h3>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl">
+                    <i class="fa-solid fa-envelope"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Email Alert System</p>
+                    <h3 class="text-2xl font-bold text-amber-400">24/7 Active</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEARCH TAB CONTENT -->
+        <section id="tab-search" class="space-y-6">
+            <!-- Search Control Bar -->
+            <div class="glass-card rounded-2xl p-6 space-y-4">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-search text-blue-400"></i> Find Product on Flipkart
+                </h2>
+                <form onsubmit="handleSearch(event)" class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input id="search-input" type="text" placeholder="Enter product name (e.g. iPhone 17, Samsung S24, Sony WH-1000XM5)..." 
+                            class="w-full bg-slate-900 border border-slate-700/70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-slate-500 outline-none transition-all">
+                    </div>
+                    <button type="submit" id="search-btn" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold px-7 py-3.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-magnifying-glass"></i> Search Products
+                    </button>
+                </form>
+
+                <!-- Quick Tags -->
+                <div class="flex items-center gap-2 flex-wrap pt-2">
+                    <span class="text-xs text-slate-400 font-medium">Quick Searches:</span>
+                    <button onclick="quickSearch('iPhone 17')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">iPhone 17</button>
+                    <button onclick="quickSearch('Samsung S24')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Samsung S24</button>
+                    <button onclick="quickSearch('MacBook Air M2')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">MacBook Air</button>
+                    <button onclick="quickSearch('Sony Headphones')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Sony Headphones</button>
+                    <button onclick="quickSearch('Nike Shoes')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Nike Shoes</button>
+                </div>
+            </div>
+
+            <!-- Loader State -->
+            <div id="search-loader" class="hidden glass-card rounded-2xl p-12 text-center space-y-4">
+                <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p class="text-slate-300 font-medium">Scraping Flipkart live results...</p>
+                <p class="text-xs text-slate-500">Extracting product titles, prices, ratings, and image assets</p>
+            </div>
+
+            <!-- Search Results Grid -->
+            <div id="search-results-container">
+                <div class="glass-card rounded-2xl p-12 text-center space-y-3">
+                    <div class="w-16 h-16 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto text-2xl">
+                        <i class="fa-solid fa-box-open"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-300">No Search Initiated</h3>
+                    <p class="text-slate-400 text-sm max-w-md mx-auto">Type a product query above or click any quick search tag to scrape live products from Flipkart.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TRACKED PRODUCTS TAB CONTENT -->
+        <section id="tab-tracked" class="hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-blue-400"></i> Tracked Products Dashboard
+                    </h2>
+                    <p class="text-slate-400 text-sm">Monitored products with automated price history & alert triggers</p>
+                </div>
+                <button onclick="refreshAllTracked()" id="refresh-all-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-xl border border-slate-700 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-rotate"></i> Refresh All Prices
+                </button>
+            </div>
+
+            <!-- Tracked Products Grid -->
+            <div id="tracked-products-container">
+                <!-- Dynamically filled -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- PRICE HISTORY & EMAIL ALERT MODAL -->
+    <div id="history-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-4xl rounded-2xl p-6 lg:p-8 space-y-6 shadow-2xl relative border border-slate-700/80 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <!-- Modal Header -->
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <img id="modal-img" src="" class="w-16 h-16 object-contain bg-slate-900 p-2 rounded-xl border border-slate-800" alt="">
+                    <div>
+                        <h3 id="modal-title" class="text-lg font-bold text-white line-clamp-1">Product Title</h3>
+                        <p id="modal-subtitle" class="text-xs text-slate-400 mt-0.5">Price History & Instant Drop Alerts</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Price Metrics Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Current Price</span>
+                    <p id="modal-curr-price" class="text-xl font-bold text-blue-400">₹0</p>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Lowest Price</span>
+                    <p id="modal-min-price" class="text-xl font-bold text-emerald-400">₹0</p>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Highest Price</span>
+                    <p id="modal-max-price" class="text-xl font-bold text-rose-400">₹0</p>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Average Price</span>
+                    <p id="modal-avg-price" class="text-xl font-bold text-slate-300">₹0</p>
+                </div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-area text-blue-400"></i> Price Timeline Chart
+                    </h4>
+                    <span class="text-xs text-slate-400">Updated Live</span>
+                </div>
+                <div class="h-64 sm:h-80 w-full">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Target Price & Email Alert Setting -->
+            <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-envelope-circle-check"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-white">Price Drop Email Alert</h4>
+                            <p class="text-xs text-slate-400">We'll email you immediately when the price drops to or below your target</p>
+                        </div>
+                    </div>
+                    <button onclick="sendTestEmail()" id="modal-test-email-btn" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-paper-plane text-blue-400"></i> Test Email Alert
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="relative">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Expected Target Price (₹)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                            <input id="modal-target-input" type="number" placeholder="Target Price (e.g. 75000)" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Your Email Address</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-at absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input id="modal-email-input" type="email" placeholder="your.name@gmail.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <button id="modal-save-target-btn" onclick="saveTargetPrice()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-sm rounded-xl transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bell"></i> Save Alert Preferences
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        let currentTab = 'search';
+        let trackedProducts = [];
+        let priceChartInstance = null;
+        let activeModalProductId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTrackedProducts();
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const searchTab = document.getElementById('tab-search');
+            const trackedTab = document.getElementById('tab-tracked');
+            const searchBtn = document.getElementById('tab-search-btn');
+            const trackedBtn = document.getElementById('tab-tracked-btn');
+
+            if (tab === 'search') {
+                searchTab.classList.remove('hidden');
+                trackedTab.classList.add('hidden');
+                searchBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-md flex items-center gap-2";
+                trackedBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2";
+            } else {
+                searchTab.classList.add('hidden');
+                trackedTab.classList.remove('hidden');
+                searchBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2";
+                trackedBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-md flex items-center gap-2";
+                fetchTrackedProducts();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-blue-600');
+            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+
+            toast.className = `pointer-events-auto ${bgColor} text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 max-w-md`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4500);
+        }
+
+        function quickSearch(query) {
+            document.getElementById('search-input').value = query;
+            handleSearch(new Event('submit'));
+        }
+
+        async function handleSearch(e) {
+            if (e) e.preventDefault();
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) {
+                showToast('Please enter a product name to search', 'info');
+                return;
+            }
+
+            const loader = document.getElementById('search-loader');
+            const container = document.getElementById('search-results-container');
+            
+            loader.classList.remove('hidden');
+            container.innerHTML = '';
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                loader.classList.add('hidden');
+
+                if (data.success && data.results.length > 0) {
+                    renderSearchResults(data.results);
+                    showToast(`Found ${data.results.length} products on Flipkart!`);
+                } else {
+                    container.innerHTML = `
+                        <div class="glass-card rounded-2xl p-12 text-center space-y-3">
+                            <div class="w-16 h-16 bg-slate-800 text-rose-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+                                <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-200">No Products Found</h3>
+                            <p class="text-slate-400 text-sm">Try searching for broader keywords like "iPhone", "Laptop", or "Headphones".</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                loader.classList.add('hidden');
+                showToast('Failed to scrape Flipkart results. Check server logs.', 'error');
+            }
+        }
+
+        function renderSearchResults(results) {
+            const container = document.getElementById('search-results-container');
+            
+            const html = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    ${results.map((item, idx) => {
+                        const isAlreadyTracked = trackedProducts.some(tp => tp.product_url === item.link);
+                        return `
+                            <div class="glass-card rounded-2xl p-5 flex flex-col justify-between hover:border-blue-500/40 transition-all duration-300 group">
+                                <div class="space-y-4">
+                                    <div class="relative bg-slate-900 rounded-xl p-4 h-48 flex items-center justify-center border border-slate-800/80 overflow-hidden">
+                                        <img src="${item.img_url}" alt="${item.title}" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300">
+                                        <span class="absolute top-3 left-3 px-2.5 py-1 bg-blue-600/90 backdrop-blur-md text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-md">
+                                            <i class="fa-solid fa-star text-amber-300 text-[10px]"></i> ${item.rating}
+                                        </span>
+                                        ${item.discount > 0 ? `
+                                            <span class="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500/90 text-slate-950 font-extrabold text-xs rounded-lg shadow-md">
+                                                ${item.discount}% OFF
+                                            </span>
+                                        ` : ''}
+                                    </div>
+
+                                    <div>
+                                        <h4 class="font-semibold text-slate-100 text-sm line-clamp-2 leading-snug group-hover:text-blue-400 transition" title="${item.title}">
+                                            ${item.title}
+                                        </h4>
+                                        <div class="mt-3 flex items-baseline gap-2">
+                                            <span class="text-2xl font-black text-white">₹${item.current_price.toLocaleString('en-IN')}</span>
+                                            ${item.mrp > item.current_price ? `<span class="text-xs text-slate-500 line-through font-medium">₹${item.mrp.toLocaleString('en-IN')}</span>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 pt-4 border-t border-slate-800/80 flex items-center gap-2">
+                                    <button onclick='trackProduct(${JSON.stringify(item).replace(/'/g, "&apos;")})' 
+                                        class="${isAlreadyTracked ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20'} flex-1 font-semibold text-xs py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition">
+                                        <i class="fa-solid ${isAlreadyTracked ? 'fa-check text-emerald-400' : 'fa-plus'}"></i>
+                                        ${isAlreadyTracked ? 'Tracking Active' : 'Track Product'}
+                                    </button>
+                                    <a href="${item.link}" target="_blank" class="p-3 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 transition" title="View on Flipkart">
+                                        <i class="fa-solid fa-external-link"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        async function fetchTrackedProducts() {
+            try {
+                const res = await fetch('/api/tracked');
+                const data = await res.json();
+                if (data.success) {
+                    trackedProducts = data.products;
+                    updateDashboardStats();
+                    renderTrackedProducts();
+                }
+            } catch (err) {
+                console.error("Failed to fetch tracked products", err);
+            }
+        }
+
+        function updateDashboardStats() {
+            document.getElementById('tracked-badge').innerText = trackedProducts.length;
+            document.getElementById('stat-total-tracked').innerText = trackedProducts.length;
+
+            const drops = trackedProducts.filter(p => p.current_price < p.avg_price).length;
+            document.getElementById('stat-drops-count').innerText = `${drops} Products`;
+        }
+
+        function renderTrackedProducts() {
+            const container = document.getElementById('tracked-products-container');
+            
+            if (trackedProducts.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl p-12 text-center space-y-4">
+                        <div class="w-16 h-16 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto text-2xl">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-200">No Tracked Products Yet</h3>
+                        <p class="text-slate-400 text-sm max-w-md mx-auto">Switch to the Search tab above to search Flipkart and start tracking price history for any product.</p>
+                        <button onclick="switchTab('search')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm rounded-xl transition">
+                            Go to Search
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    ${trackedProducts.map(p => {
+                        const isPriceDrop = p.current_price < p.avg_price;
+                        const meetsTarget = p.target_price && p.current_price <= p.target_price;
+
+                        return `
+                            <div class="glass-card rounded-2xl p-5 flex flex-col justify-between hover:border-blue-500/40 transition-all duration-300 space-y-4">
+                                <div class="space-y-4">
+                                    <div class="relative bg-slate-900 rounded-xl p-4 h-44 flex items-center justify-center border border-slate-800/80">
+                                        <img src="${p.image_url}" alt="${p.title}" class="max-h-full max-w-full object-contain">
+                                        
+                                        ${meetsTarget ? `
+                                            <span class="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-slate-950 font-extrabold text-xs rounded-lg shadow-md flex items-center gap-1 animate-bounce">
+                                                <i class="fa-solid fa-bell"></i> Target Hit!
+                                            </span>
+                                        ` : (isPriceDrop ? `
+                                            <span class="absolute top-3 left-3 px-2.5 py-1 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-lg shadow-md flex items-center gap-1">
+                                                <i class="fa-solid fa-arrow-down"></i> Price Drop!
+                                            </span>
+                                        ` : '')}
+
+                                        <button onclick="untrackProduct(${p.id})" class="absolute top-3 right-3 w-8 h-8 rounded-lg bg-slate-950/70 hover:bg-rose-600 text-slate-400 hover:text-white flex items-center justify-center transition" title="Untrack Product">
+                                            <i class="fa-solid fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <h4 class="font-semibold text-slate-100 text-sm line-clamp-2 leading-snug" title="${p.title}">
+                                            ${p.title}
+                                        </h4>
+                                        
+                                        <div class="mt-3 flex items-baseline justify-between">
+                                            <div>
+                                                <span class="text-xs text-slate-400 block font-medium">Current Price</span>
+                                                <span class="text-2xl font-black text-white">₹${p.current_price.toLocaleString('en-IN')}</span>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-xs text-slate-400 block font-medium">Lowest 30D</span>
+                                                <span class="text-lg font-bold text-emerald-400">₹${p.min_price.toLocaleString('en-IN')}</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-2 px-3 py-2 bg-slate-900/80 rounded-lg border border-slate-800/80 flex items-center justify-between text-xs">
+                                            <span class="text-slate-400">Target Alert: <b class="text-amber-400">₹${(p.target_price || 0).toLocaleString('en-IN')}</b></span>
+                                            <span class="text-slate-400 truncate max-w-[120px]" title="${p.user_email || 'No email set'}">${p.user_email ? '📧 ' + p.user_email : 'No email set'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-2">
+                                    <button onclick="openHistoryModal(${p.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-semibold text-xs py-2.5 px-3 rounded-xl border border-blue-500/30 flex items-center justify-center gap-2 transition">
+                                        <i class="fa-solid fa-bell"></i> Alerts & Chart
+                                    </button>
+                                    <button onclick="refreshSinglePrice(${p.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs py-2.5 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition">
+                                        <i class="fa-solid fa-rotate text-[10px]"></i> Check Live
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        async function trackProduct(item) {
+            try {
+                const res = await fetch('/api/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: item.title,
+                        link: item.link,
+                        img_url: item.img_url,
+                        current_price: item.current_price,
+                        mrp: item.mrp,
+                        rating: item.rating,
+                        discount: item.discount
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Started tracking ${item.title.substring(0, 25)}...`);
+                    await fetchTrackedProducts();
+                    if (currentTab === 'search') {
+                        const input = document.getElementById('search-input').value;
+                        if (input) handleSearch(null);
+                    }
+                }
+            } catch (err) {
+                showToast('Error tracking product', 'error');
+            }
+        }
+
+        async function untrackProduct(id) {
+            if (!confirm("Are you sure you want to stop tracking this product?")) return;
+            try {
+                const res = await fetch(`/api/track/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Product removed from tracking', 'info');
+                    await fetchTrackedProducts();
+                }
+            } catch (err) {
+                showToast('Failed to remove product', 'error');
+            }
+        }
+
+        async function refreshSinglePrice(id) {
+            showToast('Checking live price on Flipkart...', 'info');
+            try {
+                const res = await fetch(`/api/refresh/${id}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    await fetchTrackedProducts();
+                }
+            } catch (err) {
+                showToast('Failed to update live price', 'error');
+            }
+        }
+
+        async function refreshAllTracked() {
+            const btn = document.getElementById('refresh-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Refreshing...`;
+            showToast('Refreshing all tracked product prices...', 'info');
+
+            try {
+                const res = await fetch('/api/refresh-all', { method: 'POST' });
+                const data = await res.json();
+                showToast(data.message, 'success');
+                await fetchTrackedProducts();
+            } catch (err) {
+                showToast('Error refreshing products', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-rotate"></i> Refresh All Prices`;
+            }
+        }
+
+        function openHistoryModal(productId) {
+            const p = trackedProducts.find(item => item.id === productId);
+            if (!p) return;
+
+            activeModalProductId = productId;
+            document.getElementById('modal-title').innerText = p.title;
+            document.getElementById('modal-img').src = p.image_url;
+            document.getElementById('modal-curr-price').innerText = `₹${p.current_price.toLocaleString('en-IN')}`;
+            document.getElementById('modal-min-price').innerText = `₹${p.min_price.toLocaleString('en-IN')}`;
+            document.getElementById('modal-max-price').innerText = `₹${p.max_price.toLocaleString('en-IN')}`;
+            document.getElementById('modal-avg-price').innerText = `₹${p.avg_price.toLocaleString('en-IN')}`;
+            document.getElementById('modal-target-input').value = p.target_price || '';
+            document.getElementById('modal-email-input').value = p.user_email || '';
+
+            // Render Chart
+            renderChart(p.history);
+
+            document.getElementById('history-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+            activeModalProductId = null;
+        }
+
+        async function saveTargetPrice() {
+            if (!activeModalProductId) return;
+            const targetVal = document.getElementById('modal-target-input').value;
+            const emailVal = document.getElementById('modal-email-input').value.trim();
+
+            if (!targetVal || targetVal <= 0) {
+                showToast('Please enter a valid target price', 'info');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/set-target-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        product_id: activeModalProductId, 
+                        target_price: parseInt(targetVal),
+                        user_email: emailVal || null
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Alert preferences saved successfully!', 'success');
+                    await fetchTrackedProducts();
+                    closeModal();
+                }
+            } catch (err) {
+                showToast('Failed to save preferences', 'error');
+            }
+        }
+
+        async function sendTestEmail() {
+            const emailVal = document.getElementById('modal-email-input').value.trim();
+            if (!emailVal || !emailVal.includes('@')) {
+                showToast('Please enter your email address first', 'info');
+                return;
+            }
+
+            const title = document.getElementById('modal-title').innerText;
+            const btn = document.getElementById('modal-test-email-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-blue-400"></i> Sending...`;
+            showToast(`Sending test alert to ${emailVal}...`, 'info');
+
+            try {
+                const res = await fetch('/api/test-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailVal, product_title: title })
+                });
+                const data = await res.json();
+                showToast(data.message, data.success ? 'success' : 'error');
+            } catch (err) {
+                showToast('Failed to send test email', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane text-blue-400"></i> Test Email Alert`;
+            }
+        }
+
+        function renderChart(history) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (priceChartInstance) {
+                priceChartInstance.destroy();
+            }
+
+            const labels = history.map(h => {
+                const d = new Date(h.timestamp);
+                return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+            });
+
+            const dataPoints = history.map(h => h.price);
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(40, 116, 240, 0.4)');
+            gradient.addColorStop(1, 'rgba(40, 116, 240, 0.0)');
+
+            priceChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Price (₹)',
+                        data: dataPoints,
+                        borderColor: '#2874f0',
+                        borderWidth: 3,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: '#2874f0',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            titleFont: { size: 12, weight: 'bold' },
+                            bodyFont: { size: 14, weight: 'bold' },
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Price: ₹${context.raw.toLocaleString('en-IN')}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11 },
+                                callback: function(value) {
+                                    return '₹' + value.toLocaleString('en-IN');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

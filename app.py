@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ import database as db
 import scraper
 import emailer
 
-app = FastAPI(title="Flipkart Price Tracker & Product Intelligence UI", version="1.3.0")
+app = FastAPI(title="Flipkart Price Tracker & Product Intelligence UI", version="1.3.1")
 
 # Initialize database
 try:
@@ -24,6 +24,16 @@ try:
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
 except Exception:
     pass
+
+@app.middleware("http")
+async def vercel_routing_middleware(request: Request, call_next):
+    """Handle Vercel serverless rewrite paths seamlessly"""
+    fwd_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri") or request.headers.get("x-vercel-rewrite-path")
+    if fwd_path:
+        clean_path = fwd_path.split("?")[0]
+        if request.scope["path"] in ["/api/index.py", "/api/index", "/api/index/"] and clean_path:
+            request.scope["path"] = clean_path
+    return await call_next(request)
 
 class TrackProductRequest(BaseModel):
     title: str
@@ -45,20 +55,29 @@ class TestEmailRequest(BaseModel):
     email: str
     product_title: Optional[str] = "Apple iPhone 17 (256 GB)"
 
-@app.get("/", response_class=HTMLResponse)
-def get_dashboard():
+def load_index_html():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     candidates = [
         os.path.join(base_dir, "templates", "index.html"),
+        os.path.join(base_dir, "api", "templates", "index.html"),
         os.path.join(os.getcwd(), "templates", "index.html"),
-        os.path.join(os.path.dirname(base_dir), "templates", "index.html"),
-        "/var/task/templates/index.html"
+        os.path.join(os.getcwd(), "api", "templates", "index.html"),
+        "/var/task/templates/index.html",
+        "/var/task/api/templates/index.html"
     ]
     for p in candidates:
         if os.path.exists(p):
             with open(p, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read())
-    return HTMLResponse(content="<h1>Flipkart Scraper & Price Tracker UI</h1>")
+                return f.read()
+    return "<h1>Flipkart Scraper & Price Tracker UI</h1>"
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/api/index.py", response_class=HTMLResponse)
+@app.get("/api/index", response_class=HTMLResponse)
+@app.get("/api", response_class=HTMLResponse)
+@app.get("/api/", response_class=HTMLResponse)
+def get_dashboard():
+    return HTMLResponse(content=load_index_html())
 
 @app.get("/api/health")
 def health_check():
