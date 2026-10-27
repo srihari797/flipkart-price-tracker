@@ -671,17 +671,33 @@
                 return;
             }
 
-            const title = document.getElementById('modal-title').innerText;
+            const p = trackedProducts.find(item => item.id === activeModalProductId);
+            const title = p ? p.title : document.getElementById('modal-title').innerText;
+            const imgUrl = p ? p.image_url : document.getElementById('modal-img').src;
+            const currentPrice = p ? p.current_price : null;
+            const mrp = p ? (p.mrp || Math.round(p.current_price * 1.15)) : null;
+            const targetVal = parseInt(document.getElementById('modal-target-input').value) || (p ? p.target_price : null);
+            const prodUrl = p ? p.product_url : 'https://www.flipkart.com';
+
             const btn = document.getElementById('modal-test-email-btn');
             btn.disabled = true;
             btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-blue-400"></i> Sending...`;
-            showToast(`Sending test alert to ${emailVal}...`, 'info');
+            showToast(`Sending test alert for ${title.substring(0, 22)}...`, 'info');
 
             try {
                 const res = await fetch('/api/test-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: emailVal, product_title: title })
+                    body: JSON.stringify({ 
+                        email: emailVal,
+                        product_id: activeModalProductId,
+                        product_title: title,
+                        image_url: imgUrl,
+                        old_price: mrp,
+                        new_price: currentPrice,
+                        target_price: targetVal,
+                        product_url: prodUrl
+                    })
                 });
                 const data = await res.json();
                 showToast(data.message, data.success ? 'success' : 'error');

@@ -9,7 +9,7 @@ import database as db
 import scraper
 import emailer
 
-app = FastAPI(title="Flipkart Price Tracker & Product Intelligence UI", version="1.3.1")
+app = FastAPI(title="Flipkart Price Tracker & Product Intelligence UI", version="1.3.2")
 
 # Initialize database
 try:
@@ -38,7 +38,7 @@ async def vercel_routing_middleware(request: Request, call_next):
 class TrackProductRequest(BaseModel):
     title: str
     link: str
-    img_url: Optional[str] = "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/j/z/3/-original-imagtc5fqyz8tu4c.jpeg?q=70"
+    img_url: Optional[str] = None
     current_price: int
     mrp: Optional[int] = None
     rating: Optional[float] = 4.2
@@ -53,7 +53,13 @@ class TargetPriceRequest(BaseModel):
 
 class TestEmailRequest(BaseModel):
     email: str
-    product_title: Optional[str] = "Apple iPhone 17 (256 GB)"
+    product_id: Optional[int] = None
+    product_title: Optional[str] = None
+    image_url: Optional[str] = None
+    old_price: Optional[int] = None
+    new_price: Optional[int] = None
+    target_price: Optional[int] = None
+    product_url: Optional[str] = None
 
 def load_index_html():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -131,14 +137,41 @@ def set_target_price(req: TargetPriceRequest):
 
 @app.post("/api/test-email")
 def test_email(req: TestEmailRequest):
+    title = req.product_title
+    image_url = req.image_url
+    old_price = req.old_price
+    new_price = req.new_price
+    target_price = req.target_price
+    product_url = req.product_url
+
+    # If product_id given, lookup exact details from DB
+    if req.product_id:
+        p = db.get_product_details(req.product_id)
+        if p:
+            title = p.get("title") or title
+            image_url = p.get("image_url") or image_url
+            new_price = p.get("current_price") or new_price
+            old_price = p.get("mrp") or int((new_price or 49999) * 1.15)
+            target_price = p.get("target_price") or int((new_price or 49999) * 0.95)
+            product_url = p.get("product_url") or product_url
+
+    # Sensible fallbacks if any field is still missing
+    title = title or "Flipkart Tracked Product"
+    new_price = new_price or 49999
+    old_price = old_price or int(new_price * 1.15)
+    target_price = target_price or int(new_price * 0.95)
+    product_url = product_url or "https://www.flipkart.com"
+    if not image_url:
+        image_url = "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/n/c/d/-resized-original-imahfvuab7e6shug.jpeg?q=70"
+
     success, msg = emailer.send_price_drop_email(
         recipient_email=req.email,
-        product_title=req.product_title,
-        old_price=99900,
-        new_price=79900,
-        target_price=80000,
-        product_url="https://www.flipkart.com",
-        image_url="https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/j/z/3/-original-imagtc5fqyz8tu4c.jpeg?q=70"
+        product_title=title,
+        old_price=old_price,
+        new_price=new_price,
+        target_price=target_price,
+        product_url=product_url,
+        image_url=image_url
     )
     return {"success": success, "message": msg}
 
