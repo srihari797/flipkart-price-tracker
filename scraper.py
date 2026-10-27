@@ -12,6 +12,13 @@ HEADERS = {
     "Referer": "https://www.flipkart.com/"
 }
 
+def parse_html(html_text: str):
+    """Safely parse HTML with lxml or fallback to standard html.parser"""
+    try:
+        return BeautifulSoup(html_text, "lxml")
+    except Exception:
+        return BeautifulSoup(html_text, "html.parser")
+
 def get_session():
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -23,7 +30,6 @@ def get_session():
 
 def extract_price_and_mrp(card):
     """Accurately extracts selling price and MRP, ignoring exchange offers and bank discounts."""
-    # Primary price container tags in Flipkart DOM
     price_tag = card.find("div", class_=re.compile(r"(Nx9bqj|hZ3P6w|_30jeq3|_1_WHN1)"))
     mrp_tag = card.find("div", class_=re.compile(r"(yRaYFd|_3I9_wc|_27M-fP|_3b2fV6)"))
 
@@ -41,8 +47,7 @@ def extract_price_and_mrp(card):
             mrp = int(mrp_digits)
 
     if not current_price:
-        # Fallback: decompose exchange and bank offer elements
-        card_copy = BeautifulSoup(str(card), "lxml")
+        card_copy = parse_html(str(card))
         for elem in card_copy.find_all(True):
             txt = elem.text.lower()
             if any(term in txt for term in ["exchange", "bank offer", "upto", "off on"]):
@@ -79,14 +84,13 @@ def search_flipkart(query: str):
         print(f"Error fetching Flipkart search: {e}")
         return []
 
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = parse_html(resp.text)
     products = []
 
     # Target product card containers
     cards = soup.find_all("div", class_=re.compile(r"(jIjQ8S|_2kHM6A|cPH28e|_1sdBo1|yKfP86|RGLWAk|_75nlWZ|_13oc-S)"))
 
     if not cards:
-        # Fallback to finding product link elements directly
         a_tags = soup.find_all("a", href=re.compile(r"/p/itm"))
         seen_urls = set()
         for a in a_tags:
@@ -108,7 +112,6 @@ def search_flipkart(query: str):
         raw_link = a_tag["href"]
         full_link = "https://www.flipkart.com" + raw_link if raw_link.startswith("/") else raw_link
         
-        # Deduplicate links
         clean_link_id = raw_link.split("?")[0]
         if clean_link_id in seen_links:
             continue
@@ -142,16 +145,13 @@ def search_flipkart(query: str):
         if not title:
             continue
 
-        # Clean title
         title = re.sub(r"^Add to Compare", "", title).strip()
         title = re.sub(r"\d\.\d\d+,\d+.*", "", title).strip()
 
-        # Extract real selling price and MRP
         current_price, mrp = extract_price_and_mrp(card)
         if not current_price:
             continue
 
-        # Rating extraction
         card_text = card.text
         rating_match = re.search(r"(\d\.\d)\s*(\d[,\d]*\s*Ratings)?", card_text)
         rating = float(rating_match.group(1)) if rating_match else 4.2

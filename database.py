@@ -3,10 +3,25 @@ from datetime import datetime, timedelta
 import random
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "tracker.db")
+def get_db_path():
+    # If running in serverless (Vercel, AWS Lambda) or read-only filesystem, use /tmp
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        return "/tmp/tracker.db"
+    
+    local_path = os.path.join(os.path.dirname(__file__), "tracker.db")
+    try:
+        test_file = os.path.join(os.path.dirname(__file__), ".write_test")
+        with open(test_file, "w") as f:
+            f.write("1")
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        return local_path
+    except Exception:
+        return "/tmp/tracker.db"
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -68,7 +83,7 @@ def add_tracked_product(title, product_url, image_url, current_price, mrp, ratin
         ''', (current_price, user_email, product_id))
     else:
         if not target_price:
-            target_price = int(current_price * 0.95) # Default 5% drop target
+            target_price = int(current_price * 0.95)
             
         cursor.execute('''
             INSERT INTO tracked_products (title, product_url, image_url, current_price, mrp, rating, discount, target_price, user_email)

@@ -9,14 +9,21 @@ import database as db
 import scraper
 import emailer
 
-app = FastAPI(title="Flipkart Price Tracker & Product Intelligence UI", version="1.2.0")
+app = FastAPI(title="Flipkart Price Tracker & Product Intelligence UI", version="1.3.0")
 
-# Ensure DB initialized on startup
-db.init_db()
+# Initialize database
+try:
+    db.init_db()
+except Exception as e:
+    print(f"Warning: db.init_db() error: {e}")
 
+# Safely mount static files if directory exists
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+try:
+    if os.path.exists(static_dir):
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+except Exception:
+    pass
 
 class TrackProductRequest(BaseModel):
     title: str
@@ -38,20 +45,24 @@ class TestEmailRequest(BaseModel):
     email: str
     product_title: Optional[str] = "Apple iPhone 17 (256 GB)"
 
-class SmtpConfigRequest(BaseModel):
-    user: str
-    password: str
-    host: Optional[str] = "smtp.gmail.com"
-    port: Optional[int] = 587
-    sender: Optional[str] = ""
-
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
-    index_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base_dir, "templates", "index.html"),
+        os.path.join(os.getcwd(), "templates", "index.html"),
+        os.path.join(os.path.dirname(base_dir), "templates", "index.html"),
+        "/var/task/templates/index.html"
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read())
     return HTMLResponse(content="<h1>Flipkart Scraper & Price Tracker UI</h1>")
+
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "service": "Flipkart Price Tracker"}
 
 @app.get("/api/search")
 def search_products(q: str = Query(..., min_length=1, description="Product search query")):
@@ -98,39 +109,6 @@ def untrack_product(product_id: int):
 def set_target_price(req: TargetPriceRequest):
     db.update_target_price(req.product_id, req.target_price, req.user_email)
     return {"success": True, "message": "Target price and alert email updated"}
-
-@app.get("/api/smtp-config")
-def get_smtp_status():
-    cfg = emailer.get_smtp_config()
-    is_conf = emailer.is_smtp_configured()
-    return {
-        "success": True,
-        "configured": is_conf,
-        "host": cfg["host"],
-        "port": cfg["port"],
-        "user": cfg["user"],
-        "sender": cfg["sender"]
-    }
-
-@app.post("/api/smtp-config")
-def update_smtp_config(req: SmtpConfigRequest):
-    if not req.user or not req.password:
-        raise HTTPException(status_code=400, detail="Sender email and App Password are required")
-    
-    host = req.host or "smtp.gmail.com"
-    port = req.port or 587
-    ok, verify_msg = emailer.verify_smtp_credentials(host, port, req.user, req.password)
-    if not ok:
-        return {"success": False, "message": verify_msg}
-    
-    emailer.save_smtp_config(
-        user=req.user,
-        password=req.password,
-        host=host,
-        port=port,
-        sender=req.sender or req.user
-    )
-    return {"success": True, "message": "Email settings saved and verified successfully!"}
 
 @app.post("/api/test-email")
 def test_email(req: TestEmailRequest):
